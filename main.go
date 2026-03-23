@@ -46,6 +46,13 @@ func main() {
 	}
 	defer f.Close()
 
+	if stat, err := f.Stat(); err != nil {
+		fmt.Println("error stating file:", err)
+		return
+	} else if stat.Size() != size {
+		fmt.Println("file size changed during processing")
+		return
+	}
 	const chunkSize = 1024 * 1024
 	buf := make([]byte, chunkSize)
 	for i := int64(0); i < size; i += int64(chunkSize) {
