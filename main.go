@@ -6,6 +6,43 @@ import (
 	"path/filepath"
 )
 
+func overWriteAndCloseFile(f *os.File, size int64) error {
+	defer f.Close()
+	if stat, err := f.Stat(); err != nil {
+		fmt.Println("error stating file:", err)
+		return err
+	} else if stat.Size() != size {
+		return fmt.Errorf("file size changed during processing")
+	}
+	const chunkSize = 1024 * 1024
+	buf := make([]byte, chunkSize)
+	for i := int64(0); i < size; i += int64(chunkSize) {
+		writeSize := int64(chunkSize)
+		end := i + int64(chunkSize)
+		if end > size {
+			writeSize = size - i
+		}
+
+		n, err := f.WriteAt(buf[:int(writeSize)], i)
+		if err != nil {
+			fmt.Println("error writing to file:", err)
+			return err
+		}
+		if n != int(writeSize) {
+			fmt.Println("short write: wrote", n, "bytes, expected", writeSize)
+			return fmt.Errorf("short write")
+		}
+
+	}
+	if err := f.Sync(); err != nil {
+		fmt.Println("error syncing file:", err)
+		return err
+	}
+
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: go-shred <filename>")
@@ -44,40 +81,11 @@ func main() {
 		fmt.Println("error opening file for writing:", err)
 		return
 	}
-	defer f.Close()
 
-	if stat, err := f.Stat(); err != nil {
-		fmt.Println("error stating file:", err)
-		return
-	} else if stat.Size() != size {
-		fmt.Println("file size changed during processing")
+	if err := overWriteAndCloseFile(f, size); err != nil {
+		fmt.Println("error overwriting file:", err)
 		return
 	}
-	const chunkSize = 1024 * 1024
-	buf := make([]byte, chunkSize)
-	for i := int64(0); i < size; i += int64(chunkSize) {
-		writeSize := int64(chunkSize)
-		end := i + int64(chunkSize)
-		if end > size {
-			writeSize = size - i
-		}
-
-		n, err := f.WriteAt(buf[:int(writeSize)], i)
-		if err != nil {
-			fmt.Println("error writing to file:", err)
-			return
-		}
-		if n != int(writeSize) {
-			fmt.Println("short write: wrote", n, "bytes, expected", writeSize)
-			return
-		}
-
-	}
-	if err := f.Sync(); err != nil {
-		fmt.Println("error syncing file:", err)
-		return
-	}
-
 	if err := os.Remove(fname); err != nil {
 		fmt.Println("error deleting file:", err)
 		return
