@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 )
 
-func overWriteAndCloseFile(f *os.File, size int64) error {
+func overwriteAndCloseFile(f *os.File, size int64) error {
 	defer f.Close()
 	if stat, err := f.Stat(); err != nil {
-		fmt.Println("error stating file:", err)
 		return err
 	} else if stat.Size() != size {
 		return fmt.Errorf("file size changed during processing")
@@ -25,20 +24,16 @@ func overWriteAndCloseFile(f *os.File, size int64) error {
 
 		n, err := f.WriteAt(buf[:int(writeSize)], i)
 		if err != nil {
-			fmt.Println("error writing to file:", err)
 			return err
 		}
 		if n != int(writeSize) {
-			fmt.Println("short write: wrote", n, "bytes, expected", writeSize)
-			return fmt.Errorf("short write")
+			return fmt.Errorf("short write: wrote %d bytes, expected %d", n, writeSize)
 		}
 
 	}
 	if err := f.Sync(); err != nil {
-		fmt.Println("error syncing file:", err)
-		return err
+		return fmt.Errorf("error syncing file: %w", err)
 	}
-
 
 	return nil
 }
@@ -82,7 +77,7 @@ func main() {
 		return
 	}
 
-	if err := overWriteAndCloseFile(f, size); err != nil {
+	if err := overwriteAndCloseFile(f, size); err != nil {
 		fmt.Println("error overwriting file:", err)
 		return
 	}
